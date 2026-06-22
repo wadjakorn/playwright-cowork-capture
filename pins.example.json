@@ -1,0 +1,37 @@
+[
+  {
+    "shot": "shots/02_desktop.png",
+    "out":  "shots/annotated/02_desktop.png",
+    "title": "Step 1 — Open the app",
+    "pins": [
+      {
+        "n": 1,
+        "x": 70, "y": 351,
+        "bbox": [4, 291, 132, 120],
+        "label": "Double-click to open",
+        "placement": "auto",
+        "connector": "curve"
+      }
+    ]
+  },
+  {
+    "shot": "shots/03_inside.png",
+    "out":  "shots/annotated/03_inside.png",
+    "title": "Step 2 — Navigate the tree",
+    "pins": [
+      {
+        "n": 1, "x": 115, "y": 129,
+        "bbox": [12, 115, 207, 28],
+        "label": "Currently here",
+        "placement": "auto"
+      },
+      {
+        "n": 2, "x": 115, "y": 157,
+        "bbox": [12, 143, 207, 28],
+        "label": "Click this next",
+        "placement": "auto",
+        "offset_extra": [0, 40]
+      }
+    ]
+  }
+]

@@ -1,0 +1,58 @@
+# --- secrets ---
+.env
+.env.local
+*.pem
+*.key
+
+# --- node ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# --- playwright artifacts ---
+playwright-report/
+test-results/
+.playwright-mcp/
+*.trace
+*.webm
+
+# --- user data (real captures + rendered decks contain PII) ---
+shots/*.png
+shots/annotated/
+shots/metadata.json
+!shots/.gitkeep
+!shots/metadata.example.json
+
+# --- output decks (per-run, never check in) ---
+*.pptx
+*.docx
+*.pdf
+!docs/**/*.pdf
+
+# --- OS noise ---
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+
+# --- logs ---
+*.log
+
+# --- MCPB bundle artifact (build, don't commit) ---
+*.mcpb
+
+# --- IDE ---
+.idea/
+.vscode/
+*.iml
+
+# --- real annotation file (use pins.example.json template) ---
+pins.json

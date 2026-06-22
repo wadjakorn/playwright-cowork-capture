@@ -1,0 +1,32 @@
+{
+  "captured_at": "2026-01-01T00:00:00+00:00",
+  "captured_by": "playwright-mcp v0.0.76",
+  "target": {
+    "url": "https://example.quickconnect.to/#/signin",
+    "product": "Synology DSM",
+    "ui_language": "en-US"
+  },
+  "session": {
+    "auth_state": "fresh-login",
+    "user_session": "<user>"
+  },
+  "root_shared_folders": [
+    {
+      "name": "<folder>",
+      "item_count": 0,
+      "purpose": "<what this folder holds>",
+      "items": ["<item1>", "<item2>"],
+      "pii_class": "low",
+      "screenshot": "shots/03_<folder>.png"
+    }
+  ],
+  "capture_steps": [
+    { "step": 1, "name": "signin",  "file": "shots/01_signin_form.png", "caption": "Enter credentials" },
+    { "step": 2, "name": "desktop", "file": "shots/02_desktop.png",     "caption": "DSM application launcher" }
+  ],
+  "pii_policy": {
+    "applied": false,
+    "raw": true,
+    "rule": "User opted out of blur; raw bytes embedded directly into deck."
+  }
+}
