@@ -1,6 +1,13 @@
 /**
- * build_deck.js — Synology DSM root-directory presentation w/ real screenshots
- * Reads ./shots/metadata.json + shots/*.png, produces ./synology_root_capture.pptx
+ * build_deck.js — app-agnostic capture deck from real screenshots.
+ * Reads ./shots/metadata.json + shots/*.png, produces a .pptx.
+ *
+ * Tolerant of both the rich hand-authored schema and the lean schema that
+ * capture.spec.ts emits — missing fields get sensible defaults so the headless
+ * `capture → deck` pipeline never crashes. Synology DSM is the reference flow;
+ * `meta.target.product` drives all the on-slide labels.
+ *
+ * Env knobs: SHOTS_DIR, META_PATH, OUT_FILE.
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -8,10 +15,30 @@ const pptxgen = require('pptxgenjs');
 
 const SHOTS_DIR = process.env.SHOTS_DIR || path.resolve(__dirname, 'shots');
 const META_PATH = process.env.META_PATH || path.join(SHOTS_DIR, 'metadata.json');
-const OUT_FILE = process.env.OUT_FILE || path.resolve(__dirname, 'synology_root_capture.pptx');
+const OUT_FILE = process.env.OUT_FILE || path.resolve(__dirname, 'capture_deck.pptx');
 
-const meta = JSON.parse(fs.readFileSync(META_PATH, 'utf8'));
-const shotExists = (p) => fs.existsSync(path.resolve(__dirname, p));
+const raw = JSON.parse(fs.readFileSync(META_PATH, 'utf8'));
+
+// --- normalize: tolerate string-or-object target + missing fields ----------
+// capture.spec.ts writes `target` as a bare URL string; hand-authored metadata
+// uses an object. Coerce both into one shape, fill defaults, so nothing below
+// dereferences undefined.
+const targetObj = typeof raw.target === 'string' ? { url: raw.target } : (raw.target || {});
+const meta = {
+  ...raw,
+  captured_at: raw.captured_at || new Date().toISOString(),
+  captured_by: raw.captured_by || 'playwright',
+  target: targetObj,
+  root_shared_folders: (raw.root_shared_folders || []).map((f) => ({
+    pii_class: 'low',
+    purpose: '',
+    items: f.items || f.items_sample_folders || [],
+    ...f,
+  })),
+};
+const PRODUCT = (targetObj.product || 'Web App').toString();
+const PRODUCT_UC = PRODUCT.toUpperCase();
+const hasVolume = targetObj.volume != null;
 
 const C = {
   bg: 'F4F7FB', card: 'FFFFFF', ink: '21295C', ink2: '36465F', mute: '7A8AA0',
@@ -22,18 +49,19 @@ const C = {
 
 const pres = new pptxgen();
 pres.layout = 'LAYOUT_WIDE';   // 13.3 x 7.5
-pres.title = 'Synology DSM — Root Directory';
+pres.title = PRODUCT + ' — Capture';
 pres.author = 'capture.spec.ts / playwright-mcp';
 
 const SLIDE_W = 13.3, SLIDE_H = 7.5;
 const piiColor = c => c?.startsWith('high') ? C.danger : c?.startsWith('medium') ? C.warn : C.good;
 const piiLabel = c => c?.startsWith('high') ? 'PII: HIGH' : c?.startsWith('medium') ? 'PII: MEDIUM' : 'PII: LOW';
-const TOTAL = 8;
+// cover + methodology + auth + (one per folder) + replay
+const TOTAL = meta.root_shared_folders.length + 4;
 
 function headerBar(s, eyebrow) {
   s.background = { color: C.bg };
   s.addShape(pres.shapes.RECTANGLE, { x: 0, y: 0, w: SLIDE_W, h: 0.45, fill: { color: C.ink }, line: { color: C.ink } });
-  s.addText('SYNOLOGY DSM  /  ROOT DIRECTORY CAPTURE', { x: 0.5, y: 0.05, w: 8, h: 0.35, color: 'C9D3E5', fontSize: 10, fontFace: 'Trebuchet MS', charSpacing: 4, valign: 'middle', margin: 0 });
+  s.addText(PRODUCT_UC + '  /  CAPTURE', { x: 0.5, y: 0.05, w: 8, h: 0.35, color: 'C9D3E5', fontSize: 10, fontFace: 'Trebuchet MS', charSpacing: 4, valign: 'middle', margin: 0 });
   s.addText(meta.captured_at.slice(0, 10), { x: SLIDE_W - 2.5, y: 0.05, w: 2, h: 0.35, color: '8DA0BF', fontSize: 10, fontFace: 'Trebuchet MS', align: 'right', valign: 'middle', margin: 0 });
   if (eyebrow) s.addText(eyebrow.toUpperCase(), { x: 0.5, y: 0.7, w: 12, h: 0.35, color: C.teal, fontSize: 11, fontFace: 'Trebuchet MS', bold: true, charSpacing: 6, margin: 0 });
 }
@@ -58,10 +86,17 @@ function addShot(s, file, x, y, w, h) {
   s.background = { color: C.ink };
   s.addShape(pres.shapes.RECTANGLE, { x: 0, y: 0, w: 4.5, h: SLIDE_H, fill: { color: C.deep }, line: { color: C.deep } });
   s.addShape(pres.shapes.RECTANGLE, { x: 4.5, y: 0, w: 0.05, h: SLIDE_H, fill: { color: C.accent }, line: { color: C.accent } });
-  s.addText('SYNOLOGY DSM', { x: 0.6, y: 1.1, w: 3.8, h: 0.5, color: '8DA0BF', fontSize: 12, fontFace: 'Trebuchet MS', charSpacing: 8, bold: true, margin: 0 });
-  s.addText('Root Directory\nCapture', { x: 0.6, y: 1.6, w: 3.8, h: 2.2, color: 'FFFFFF', fontSize: 48, fontFace: 'Georgia', bold: true, valign: 'top', margin: 0 });
-  s.addText(meta.target.volume, { x: 0.6, y: 3.95, w: 3.8, h: 0.35, color: '8DA0BF', fontSize: 13, fontFace: 'Trebuchet MS', margin: 0 });
-  s.addText(meta.target.volume_used_tb + ' TB used of ' + meta.target.volume_total_tb + ' TB', { x: 0.6, y: 4.3, w: 3.8, h: 0.4, color: C.accent, fontSize: 14, fontFace: 'Trebuchet MS', bold: true, margin: 0 });
+  s.addText(PRODUCT_UC, { x: 0.6, y: 1.1, w: 3.8, h: 0.5, color: '8DA0BF', fontSize: 12, fontFace: 'Trebuchet MS', charSpacing: 8, bold: true, margin: 0 });
+  s.addText('Directory\nCapture', { x: 0.6, y: 1.6, w: 3.8, h: 2.2, color: 'FFFFFF', fontSize: 48, fontFace: 'Georgia', bold: true, valign: 'top', margin: 0 });
+  // Volume stats are Synology-specific — only render when present.
+  if (hasVolume) {
+    s.addText(meta.target.volume, { x: 0.6, y: 3.95, w: 3.8, h: 0.35, color: '8DA0BF', fontSize: 13, fontFace: 'Trebuchet MS', margin: 0 });
+    if (meta.target.volume_used_tb != null) {
+      s.addText(meta.target.volume_used_tb + ' TB used of ' + meta.target.volume_total_tb + ' TB', { x: 0.6, y: 4.3, w: 3.8, h: 0.4, color: C.accent, fontSize: 14, fontFace: 'Trebuchet MS', bold: true, margin: 0 });
+    }
+  } else if (meta.target.url) {
+    s.addText(meta.target.url, { x: 0.6, y: 3.95, w: 3.8, h: 0.7, color: '8DA0BF', fontSize: 12, fontFace: 'Consolas', margin: 0 });
+  }
   s.addText('Captured ' + meta.captured_at.slice(0, 10) + ' · ' + meta.captured_by.split(' ')[0], { x: 0.6, y: 6.7, w: 3.8, h: 0.3, color: '6B7E9F', fontSize: 10, fontFace: 'Trebuchet MS', italic: true, margin: 0 });
 
   // Right panel — embed the desktop shot as the hero image
@@ -69,8 +104,8 @@ function addShot(s, file, x, y, w, h) {
 
   // Root listing tree under hero
   const startY = 6.05;
-  const rows = meta.root_shared_folders;
-  const colW = (SLIDE_W - 5.3 - 0.3) / 4 - 0.1;
+  const rows = meta.root_shared_folders.slice(0, 4);
+  const colW = (SLIDE_W - 5.3 - 0.3) / Math.max(rows.length, 1) - 0.1;
   rows.forEach((f, i) => {
     const x = 5.3 + i * (colW + 0.13);
     s.addShape(pres.shapes.RECTANGLE, { x, y: startY, w: colW, h: 1.0, fill: { color: '0F1A3A' }, line: { color: '1F2D55', width: 1 } });
@@ -87,8 +122,11 @@ function addShot(s, file, x, y, w, h) {
   s.addText('How the spec captures', { x: 0.5, y: 1.2, w: 8, h: 0.7, color: C.ink, fontSize: 32, fontFace: 'Georgia', bold: true, margin: 0 });
   s.addText('Run: NAS_USER=… NAS_PASS=… npx playwright test capture.spec.ts', { x: 0.5, y: 1.95, w: 12, h: 0.35, color: C.mute, fontSize: 12, fontFace: 'Consolas', italic: true, margin: 0 });
 
-  const steps = meta.capture_steps;
+  const steps = meta.capture_steps || [];
   const cols = 3, cardW = 4.0, cardH = 2.0, gap = 0.25, startX = 0.5, startY = 2.6;
+  if (steps.length === 0) {
+    s.addText('(no capture_steps in metadata — populate to render the methodology grid)', { x: 0.5, y: 2.6, w: 12, h: 0.4, color: C.mute, fontSize: 12, fontFace: 'Consolas', italic: true, margin: 0 });
+  }
   steps.forEach((st, i) => {
     const r = Math.floor(i / cols), c = i % cols;
     const x = startX + c * (cardW + gap);
@@ -127,7 +165,7 @@ function addShot(s, file, x, y, w, h) {
 // ============== SLIDES 4-7 — one per shared folder, with embedded shot ==============
 meta.root_shared_folders.forEach((folder, idx) => {
   const s = pres.addSlide();
-  headerBar(s, 'Folder ' + (idx + 1) + ' of 4');
+  headerBar(s, 'Folder ' + (idx + 1) + ' of ' + meta.root_shared_folders.length);
 
   // Title block
   s.addText('/' + folder.name, { x: 0.5, y: 1.05, w: 6, h: 0.85, color: C.ink, fontSize: 44, fontFace: 'Consolas', bold: true, margin: 0 });
@@ -188,7 +226,7 @@ meta.root_shared_folders.forEach((folder, idx) => {
   s.addText([
     { text: 'npm install',                                                       options: { breakLine: true } },
     { text: 'npx playwright install chromium',                                   options: { breakLine: true } },
-    { text: 'NAS_USER=wadjakorn NAS_PASS=… npm run capture',                     options: { breakLine: true } },
+    { text: 'NAS_USER=admin NAS_PASS=… npm run capture',                         options: { breakLine: true } },
     { text: '',                                                                  options: { breakLine: true } },
     { text: '# or, via the Playwright MCP installed today:',                     options: { color: '7A8AA0', italic: true, breakLine: true } },
     { text: '# claude prompts → browser_navigate → screenshot → done',           options: { color: '7A8AA0', italic: true, breakLine: true } },
@@ -212,13 +250,13 @@ meta.root_shared_folders.forEach((folder, idx) => {
     { text: '[aria-label^="/photo"] [role="option"] *', options: { breakLine: true } },
     { text: '[aria-label^="/photo"] img',               options: { breakLine: true } },
     { text: '.x-tree-node-text',                        options: { breakLine: true } },
-    { text: 'button[aria-label*="wadjakorn"] .x-btn-inner', options: {} }
+    { text: 'button[aria-label*="<account>"] .x-btn-inner', options: {} }
   ], { x: rx + 0.3, y: ry + 1.3, w: rw - 0.4, h: 2.2, color: C.ink, fontSize: 11, fontFace: 'Consolas', valign: 'top', margin: 0 });
 
   s.addText('Effect: filter: blur(12px) + transparent text. /docker (low PII) is not blurred — folder names there are app identifiers, not personal data.', { x: rx + 0.3, y: ry + 3.5, w: rw - 0.4, h: 1.0, color: C.mute, fontSize: 11, fontFace: 'Trebuchet MS', italic: true, margin: 0 });
 
   s.addText('Spec: capture.spec.ts · Config: playwright.config.ts · Bundle: playwright-mcp.mcpb', { x: 0.5, y: SLIDE_H - 0.55, w: 12.3, h: 0.3, color: C.mute, fontSize: 10, fontFace: 'Consolas', margin: 0 });
-  pageNum(s, 8);
+  pageNum(s, TOTAL);
 }
 
 pres.writeFile({ fileName: OUT_FILE }).then(p => console.log('wrote', p));
