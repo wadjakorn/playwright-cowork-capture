@@ -48,6 +48,7 @@ desktop.ini
 
 # --- MCPB bundle artifact (build, don't commit) ---
 *.mcpb
+dist/
 
 # --- IDE ---
 .idea/

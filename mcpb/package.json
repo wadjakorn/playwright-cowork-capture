@@ -1,0 +1,10 @@
+{
+  "name": "playwright-mcp-bundle",
+  "version": "0.1.1",
+  "private": true,
+  "description": "Robust launcher bundle for @playwright/mcp under Claude Desktop / Cowork",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@playwright/mcp": "0.0.76"
+  }
+}

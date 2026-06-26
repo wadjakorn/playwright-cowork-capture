@@ -22,6 +22,25 @@ internal admin pages ฯลฯ) — สิ่งที่ Cowork cloud sandbox *
 
 ไม่ต้องเซ็ต SSH/VPN/Tailscale เพิ่ม — Playwright รัน local ใช้ network stack ของเครื่องอยู่แล้ว
 
+### Windows ก่อนเริ่ม — execution policy (ทำก่อนอย่างอื่น)
+
+PowerShell บน Windows บล็อก script ของ npm/npx เป็นค่า default (`npx.ps1 cannot be loaded
+because running scripts is disabled`). ต้องปลดล็อกก่อน ไม่งั้น `npm` / `npx` ใช้ไม่ได้เลย:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+`RemoteSigned` = รัน script ที่สร้าง local ได้ แต่ script ที่โหลดมาต้อง sign — ปลอดภัยและ
+ไม่ต้องสิทธิ์ admin. **เปิด PowerShell หน้าต่างใหม่** หลังตั้งค่า (policy อ่านตอน start session).
+ถ้าต้องรันทันทีในหน้าต่างเดิม ใช้ `npx.cmd` แทน `npx` (เลี่ยง `.ps1`).
+
+ทางลัด: `scripts\windows-bootstrap.ps1` ตั้ง policy ให้ + เช็ค Node + โหลด browser ให้ครบในคำสั่งเดียว:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\windows-bootstrap.ps1
+```
+
 ### Per-platform paths
 
 | What | macOS | Windows | Linux |
@@ -36,9 +55,30 @@ internal admin pages ฯลฯ) — สิ่งที่ Cowork cloud sandbox *
 
 ## Step 1 — Install Playwright MCP
 
-มี 2 ทาง
+มี 3 ทาง — **บน Windows แนะนำทาง A** (hardened bundle ใน repo นี้)
 
-### ทาง A: Pre-built `.mcpb` (เร็ว)
+### ทาง A: Build hardened bundle จาก repo (แนะนำ โดยเฉพาะ Windows)
+
+```powershell
+# Windows
+powershell -ExecutionPolicy Bypass -File scripts\build-mcpb.ps1
+# ได้ dist\playwright-mcp.mcpb → ลากเข้า Cowork Settings → Extensions → full restart
+```
+
+```bash
+# macOS / Linux
+cd mcpb && npm install --omit=dev && zip -r ../dist/playwright-mcp.mcpb . -x '*.log' '*.bak*'
+```
+
+**ทำไมต้องใช้ตัวนี้แทน `npx @playwright/mcp@latest`:** Claude Desktop / Cowork โหลด bundle ด้วย
+built-in (Electron-as-Node) runtime ของตัวเอง. launcher ที่ shell ออกไปเรียก `npx … @latest`
+จะ **ตายประมาณ 5–7 วิหลัง `initialize`** (log ขึ้น `Server transport closed unexpectedly`)
+เพราะ (1) PATH ต่างจาก shell ปกติ + `@latest` ต้อง resolve ผ่าน network ทุกครั้ง และ
+(2) `stdio:'inherit'` ไม่ forward stdin pipe ลง grandchild ภายใต้ Electron → server เห็น EOF
+แล้ว exit. bundle ใน `mcpb/` แก้ทั้งสองจุด: vendor `@playwright/mcp` แบบ **pin version**
+(ไม่มี npx/network) แล้ว bridge stdin/stdout เองด้วย Node stream. ดู [`mcpb/README.md`](mcpb/README.md)
+
+### ทาง B: Pre-built `.mcpb` (เร็ว)
 
 1. Download `playwright-mcp.mcpb` ที่ผมส่งให้ใน chat (3.7 MB)
 2. ดับเบิ้ลคลิกไฟล์
@@ -51,7 +91,7 @@ internal admin pages ฯลฯ) — สิ่งที่ Cowork cloud sandbox *
    - macOS: Cmd+Q
    - Windows: Right-click tray icon → Quit (หรือ Task Manager → End Task)
 
-### ทาง B: Build จาก scratch
+### ทาง C: Build จาก scratch (manual)
 
 ```bash
 mkdir -p /tmp/playwright-mcp && cd /tmp/playwright-mcp
@@ -181,6 +221,10 @@ Claude จะใช้ Playwright MCP tools (`browser_navigate`, `browser_snapsh
 ครั้งแรก login ผ่าน Playwright หนึ่งครั้ง → cookie/session เก็บใน profile dir → ครั้งถัดไป
 ไปตรง dashboard เลย ไม่ต้องเอา password มาใส่
 
+> ถ้าใช้ hardened bundle (Step 1 ทาง A) ไม่ต้องแก้ manifest — set env `PLAYWRIGHT_MCP_ARGS`
+> เป็น flags ที่ต้องการได้เลย (เช่น `--browser=chromium --user-data-dir=... --ignore-https-errors`),
+> หรือแก้ `flags` ใน `mcpb/server.js` แล้ว rebuild
+
 **Cross-platform variable substitution** (MCPB spec รองรับ): `${HOME}`, `${DESKTOP}`, `${DOCUMENTS}`, `${DOWNLOADS}` ทำงานทั้ง macOS/Windows/Linux. ถ้าจะใช้ Windows-only เปลี่ยนเป็น `${LOCALAPPDATA}` ใน manifest
 
 ### Headed mode (เห็น browser ขับเองตอน debug)
@@ -203,6 +247,19 @@ Claude จะใช้ Playwright MCP tools (`browser_navigate`, `browser_snapsh
 ```bash
 npx @playwright/mcp install-browser chrome-for-testing
 ```
+
+### Windows: `npx.ps1 cannot be loaded because running scripts is disabled`
+
+PowerShell execution policy บล็อก. ตั้ง `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
+แล้วเปิดหน้าต่างใหม่ (ดู "Windows ก่อนเริ่ม" ด้านบน). เฉพาะหน้าต่างเดิม ใช้ `npx.cmd` แทน `npx`
+
+### MCP crash-loop: `Server transport closed unexpectedly` หลัง `initialize`
+
+อาการ: ใน `%APPDATA%\Claude\logs\mcp-server-Playwright MCP.log` server `started and connected`
+แล้วตายภายในไม่กี่วิหลัง `initialize`, วนซ้ำทุก restart. สาเหตุคือ launcher ที่เรียก
+`npx @playwright/mcp@latest` ผ่าน shell หรือใช้ `stdio:'inherit'` ภายใต้ built-in node ของ Claude.
+**วิธีแก้: ใช้ hardened bundle (Step 1 ทาง A).** หมายเหตุ debug: Claude Desktop ไม่ส่ง stderr ของ
+MCP server ลง log ไฟล์ — ถ้าจะ debug เอง ให้ `server.js` เขียน log ลงไฟล์โดยตรง
 
 ### Cowork ไม่เห็น Playwright tools หลัง install
 

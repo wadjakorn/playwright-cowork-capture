@@ -32,7 +32,7 @@ Optional: `APP_NAME="Grafana" npm run capture` stamps the product name onto the 
 - **Privacy-preserving (vision-free embedding)** — the deck builder embeds PNGs **by file path**; the bytes go Chromium → disk → `.pptx` without ever entering the model's vision context. Your private screenshots stay out of the API unless you explicitly ask for a visual review. This is a privacy choice for *your own* data, not a way around any safety check.
 - **Selective PII handling** — opt-in blur of high-sensitivity regions (photo thumbnails, faces, file contents), not blanket blur. See the policy in [COWORK_INSTRUCTIONS.md](COWORK_INSTRUCTIONS.md).
 - **Reproducible** — every capture session also emits a deterministic `capture.spec.ts` so you can replay it under cron without Claude.
-- **Cross-platform** — MCPB bundle declares `darwin / linux / win32`; scripts route env vars through `cross-env`; `annotate.py` falls back across macOS → Linux → Windows fonts.
+- **Cross-platform** — MCPB bundle declares `darwin / linux / win32`; scripts route env vars through `cross-env`; `annotate.py` falls back across macOS → Linux → Windows fonts. The bundle in [`mcpb/`](mcpb/) is hardened for Claude Desktop's built-in-Node runtime (pinned/vendored, no runtime `npx`; manual stdio bridge) so it doesn't crash-loop on Windows — see [SETUP.md](SETUP.md) Step 1.
 
 ## Repo layout
 
@@ -43,6 +43,8 @@ Optional: `APP_NAME="Grafana" npm run capture` stamps the product name onto the 
 | [annotate.py](annotate.py) | PIL post-processor — numbered pins on screenshots |
 | [build_deck.js](build_deck.js) | pptxgenjs deck builder |
 | [COWORK_INSTRUCTIONS.md](COWORK_INSTRUCTIONS.md) | Paste into the Cowork project Instructions field |
+| [mcpb/](mcpb/) | Hardened Playwright MCP extension source (pinned, vendored launcher) — see [mcpb/README.md](mcpb/README.md) |
+| [scripts/](scripts/) | `build-mcpb.ps1` (build the `.mcpb`) · `windows-bootstrap.ps1` (exec-policy + browser) |
 | [SETUP.md](SETUP.md) | Per-platform install + troubleshooting |
 | [PUBLISHING.md](PUBLISHING.md) | What to ship / what to scrub before pushing |
 | `CLAUDE.md` | Guidance for Claude Code working in this repo |
