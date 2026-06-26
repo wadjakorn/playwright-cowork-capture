@@ -1,61 +1,67 @@
-# Synology DSM — Root Directory Capture (Playwright)
+# playwright-cowork-capture
 
-Deterministic Playwright spec that signs into a Synology DSM, opens File Station, enumerates the root shared folders, and saves PII-blurred screenshots + a JSON manifest.
+Capture **local / LAN / self-hosted web flows** into a slide deck or annotated user-manual, end-to-end — driven from Cowork by a locally-run Playwright MCP. macOS · Windows · Linux.
 
-## Run
+The cloud sandbox can't reach `*.local`, RFC1918 IPs, or VPN-only services. Playwright MCP runs a real Chromium **on your machine**, so it reaches them. You prompt once (*"capture flow X from `<URL>` and put it in a deck"*); Claude drives navigation → screenshots → metadata → deck.
+
+Synology DSM is the bundled reference flow — the same pattern works for Proxmox, Home Assistant, Grafana, Jenkins, internal admin pages, or any web UI.
+
+## Two ways to run
+
+| Mode | When | Entry point |
+|---|---|---|
+| **Cowork + Playwright MCP** (primary) | Interactive — "capture X, build a deck" | Prompt Claude; see [COWORK_INSTRUCTIONS.md](COWORK_INSTRUCTIONS.md) |
+| **Headless spec** (replay) | Cron / CI — no model in the loop | `npm run capture` → [capture.spec.ts](capture.spec.ts) |
+
+## Quick start (headless replay)
 
 ```bash
-npm install            # installs @playwright/test and pulls Chromium
-cp .env.example .env   # then fill NAS_PASS
-NAS_USER=wadjakorn NAS_PASS='…' npm run capture
+npm install                  # @playwright/test + Chromium
+cp .env.example .env         # fill in target URL + credentials
+npm run capture              # cross-env → works on bash / zsh / cmd / PowerShell
 ```
 
-Artifacts land in `./shots/`:
+Artifacts land in `./shots/` (PNGs + `metadata.json`). The bundled spec targets Synology DSM; adapt the URL + selectors for your own app — see [SETUP.md](SETUP.md).
 
-```
-shots/
-  01_signin_landing.png   (or 01_signin_form.png if NOT pre-authenticated)
-  02_desktop.png
-  03_docker.png
-  04_home.png
-  05_homes.png
-  06_photo.png
-  metadata.json
-```
+## Design properties
 
-## Cron
+- **Local-first** — screenshots are written by your local Chromium straight to a mounted folder. Nothing routes through the cloud sandbox, which can't reach LAN hosts anyway.
+- **Privacy-preserving (vision-free embedding)** — the deck builder embeds PNGs **by file path**; the bytes go Chromium → disk → `.pptx` without ever entering the model's vision context. Your private screenshots stay out of the API unless you explicitly ask for a visual review. This is a privacy choice for *your own* data, not a way around any safety check.
+- **Selective PII handling** — opt-in blur of high-sensitivity regions (photo thumbnails, faces, file contents), not blanket blur. See the policy in [COWORK_INSTRUCTIONS.md](COWORK_INSTRUCTIONS.md).
+- **Reproducible** — every capture session also emits a deterministic `capture.spec.ts` so you can replay it under cron without Claude.
+- **Cross-platform** — MCPB bundle declares `darwin / linux / win32`; scripts route env vars through `cross-env`; `annotate.py` falls back across macOS → Linux → Windows fonts.
 
-```cron
-# every morning at 08:00
-0 8 * * *  cd /opt/synology-capture && NAS_USER=wadjakorn NAS_PASS=… /usr/bin/npx playwright test capture.spec.ts >> /var/log/syno-capture.log 2>&1
-```
+## Repo layout
 
-## PII handling
+| File | Role |
+|---|---|
+| [capture.spec.ts](capture.spec.ts) | Deterministic Playwright flow (reference: Synology DSM) |
+| [playwright.config.ts](playwright.config.ts) | viewport, retries, HTTPS, timeouts |
+| [annotate.py](annotate.py) | PIL post-processor — numbered pins on screenshots |
+| [build_deck.js](build_deck.js) | pptxgenjs deck builder |
+| [COWORK_INSTRUCTIONS.md](COWORK_INSTRUCTIONS.md) | Paste into the Cowork project Instructions field |
+| [SETUP.md](SETUP.md) | Per-platform install + troubleshooting |
+| [PUBLISHING.md](PUBLISHING.md) | What to ship / what to scrub before pushing |
+| `CLAUDE.md` | Guidance for Claude Code working in this repo |
 
-Per the project mandate (*"automated screen capture by skip PII"*), before each
-screenshot the spec injects a stylesheet that blurs:
+## Adapt to your own app
 
-- file/folder name labels (`.syno-finder-icon-text`)
-- photo thumbnails (`[class*="finder-icon"] img[src*="thumb"]`)
-- tree-node usernames (`.x-tree-node-anchor span`)
-- the top-right account badge (`[class*="header-username"]`)
-- anything tagged `data-pii="true"`
+Same pattern, change URL + selector strategy:
 
-Add custom selectors in `PII_SELECTORS` at the top of `capture.spec.ts`.
+| Use-case | URL | Selector hint |
+|---|---|---|
+| Synology DSM | `https://<id>.quickconnect.to` | role-based (treeitem, menuitem) |
+| Proxmox | `https://<ip>:8006` | XPath through ExtJS tree |
+| Home Assistant | `https://homeassistant.local:8123` | `data-domain` attributes |
+| Grafana | `http://grafana.lan:3000` | `aria-label` on panels |
+| Jenkins | `http://jenkins.lan:8080` | `role=link` with name |
 
-## Why not headless from CI directly to the NAS?
+Prompt Claude to `browser_snapshot` the target first — it derives stable `getByRole` / `getByText` selectors instead of guessing framework-generated CSS classes.
 
-- LAN-only `dbaze-nas:5001` — only reachable from the same broadcast domain or via QuickConnect relay.
-- The QuickConnect URL (`https://<id>.quickconnect.to`) redirects to a self-signed cert on a relay subdomain — `ignoreHTTPSErrors: true` is already set in `playwright.config.ts`.
-- The first signin sets a session cookie; subsequent runs may skip the form (spec handles both branches).
+## Scope & ethics
 
-## Observed root layout (2026-06-22)
+Built for capturing services **you own or are authorized to access**. Use real credentials only on your own systems. Never commit `.env`, real `shots/*.png`, or rendered decks — they carry live data. The pre-publish scrub checklist is in [PUBLISHING.md](PUBLISHING.md).
 
-| folder  | items | purpose                                            |
-| :------ | ----: | :------------------------------------------------- |
-| docker  |     4 | Container volumes (immich, streaming, vaultwarden) |
-| home    |    12 | Personal home of signed-in user                    |
-| homes   |     6 | Admin view — all users' home directories           |
-| photo   |    27 | Synology Photos library                            |
+## License
 
-Volume: `@volume1`, 2.92 TB used of 3.48 TB.
+MIT — see [LICENSE](LICENSE).

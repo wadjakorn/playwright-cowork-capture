@@ -110,10 +110,12 @@ await browser_evaluate({ function: `() => document.getElementById('__pii_blur')?
 
 ---
 
-## Claude-vision bypass for sensitive shots
+## Vision-free embedding (keep private pixels out of model context)
 
-The user owns this data. They want the deck to contain raw pixels. Claude doesn't need to
-*see* the screenshot to embed it. Follow this discipline:
+The user owns this data and wants the deck to contain raw pixels. Claude doesn't need to
+*see* the screenshot to embed it — embedding by file path keeps the user's private data out
+of the API. This is a privacy practice for the user's own systems, not a way to route around
+content review. Follow this discipline:
 
 - **Do not call `Read()` on `./shots/*.png`** during the build unless explicitly asked to
   visually QA.

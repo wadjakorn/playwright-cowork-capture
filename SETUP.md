@@ -283,7 +283,7 @@ Tip: prompt ตัวแรก ให้ Claude `browser_snapshot` หน้า�
 ## What this gives you
 
 - **Local-first**: screenshots ไม่ผ่าน cloud, อยู่ใน mounted folder
-- **Bypass-ready**: ถ้าไม่ Read shots, Claude ไม่เห็น pixel — bytes ไหลตรง Chromium → disk → .pptx
+- **Privacy-preserving**: ถ้าไม่ Read shots, Claude ไม่เห็น pixel — bytes ไหลตรง Chromium → disk → .pptx (private data ของคุณไม่เข้า API)
 - **Reusable**: pattern นี้ใช้กับ web app ใดก็ได้ ไม่ผูกกับ Synology
 - **Cron-portable**: capture.spec.ts ที่ผม emit ออกมาด้วย → ใช้ลอย headless บน cron ได้
   ไม่ต้องมี Claude อยู่ในลูป

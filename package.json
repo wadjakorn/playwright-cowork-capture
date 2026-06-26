@@ -1,8 +1,8 @@
 {
-  "name": "synology-capture-demo",
+  "name": "playwright-cowork-capture",
   "version": "0.1.0",
   "private": true,
-  "description": "Playwright spec: enumerate Synology DSM root shared folders + PII-aware screenshots",
+  "description": "Local-first Playwright MCP capture of LAN/self-hosted web flows into decks (Synology DSM reference flow)",
   "scripts": {
     "postinstall": "playwright install chromium",
     "capture": "cross-env playwright test capture.spec.ts",
