@@ -3,7 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * Headless cron-friendly config.
  * `ignoreHTTPSErrors` is needed because DSM uses a self-signed cert on the LAN endpoint
- * that QuickConnect relay redirects to (192-168-1-33.<id>.direct.quickconnect.to).
+ * that the LAN/relay endpoint redirects to (e.g. 192-168-x-x.<id>.direct.quickconnect.to).
  */
 export default defineConfig({
   testDir: '.',

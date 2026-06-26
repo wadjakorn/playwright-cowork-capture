@@ -55,6 +55,7 @@ authorized to handle, raise it rather than routing around it.
 npm install            # @playwright/test + Chromium (postinstall pulls the browser)
 npm run capture        # headless replay of capture.spec.ts (cross-env)
 npm run capture:headed # watch the browser drive
+npm run deck           # shots/metadata.json → capture_deck.pptx (app-agnostic build_deck.js)
 npm run annotate       # PIL numbered pins (annotate.py pins.json)
 npm run report         # playwright show-report
 ```

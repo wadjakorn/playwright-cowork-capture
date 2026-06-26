@@ -240,10 +240,10 @@ npm run capture    # cross-env จัดการให้ NAS_USER, NAS_PASS �
 หรือ inline:
 ```cmd
 :: Windows cmd
-set NAS_USER=wadjakorn && set NAS_PASS=xxx && npx playwright test capture.spec.ts
+set NAS_USER=admin && set NAS_PASS=xxx && npx playwright test capture.spec.ts
 
 :: Windows PowerShell
-$env:NAS_USER='wadjakorn'; $env:NAS_PASS='xxx'; npx playwright test capture.spec.ts
+$env:NAS_USER='admin'; $env:NAS_PASS='xxx'; npx playwright test capture.spec.ts
 ```
 
 ### Windows: cron-equivalent

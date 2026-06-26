@@ -132,7 +132,14 @@ Only break this discipline when:
 
 ## Deck building defaults
 
-Use the `pptx` skill. Default deck structure for a "capture flow + deck" request:
+**Fast path** — if the capture wrote a `shots/metadata.json` (the bundled
+`capture.spec.ts` does), just run `npm run deck`. `build_deck.js` is app-agnostic
+and reads the same schema the spec emits (`target.product`, per-folder
+`pii_class` / `purpose`, `capture_steps`), so it produces a full deck with **zero
+hand-authoring** — don't rebuild slides by hand when this covers the request. Use
+the `pptx` skill only when the user wants a bespoke layout the builder doesn't do.
+
+Default deck structure for a "capture flow + deck" request:
 
 | # | Slide | Content |
 |---|-------|---------|
@@ -258,7 +265,7 @@ Claude:
 **Example 2 — Multi-step with auth:**
 
 ```
-User: ไปที่ DSM, login wadjakorn/$NAS_PASS, capture root directory ทุก folder, ทำ deck สรุป
+User: ไปที่ DSM, login $NAS_USER/$NAS_PASS, capture root directory ทุก folder, ทำ deck สรุป
 ```
 
 Claude:

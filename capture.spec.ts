@@ -10,7 +10,7 @@
  *   6. Write enumeration to ./shots/metadata.json
  *
  * Run:    npm i && npx playwright install chromium && \
- *         NAS_USER=wadjakorn NAS_PASS=... npx playwright test capture.spec.ts
+ *         NAS_URL=https://your-nas/#/signin NAS_USER=... NAS_PASS=... npx playwright test capture.spec.ts
  * Cron:   `0 8 * * * cd /path && NAS_USER=... NAS_PASS=... npx playwright test capture.spec.ts`
  *
  * Selectors are role/text-based on purpose — DSM ExtJS renders dynamic class names
@@ -21,7 +21,7 @@ import { test, expect, Page } from '@playwright/test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-const TARGET_URL = process.env.NAS_URL ?? 'https://wadjakorn.sg3.quickconnect.to/#/signin';
+const TARGET_URL = process.env.NAS_URL ?? 'https://your-nas.example.com/#/signin';
 const NAS_USER = process.env.NAS_USER ?? '';
 const NAS_PASS = process.env.NAS_PASS ?? '';
 const SHOTS_DIR = path.join(__dirname, 'shots');
@@ -118,6 +118,14 @@ test('synology DSM — capture root directory enumeration', async ({ page }) => 
 
   // --- 4. Enumerate root shared folders -----------------------------------
   const folders = ['docker', 'home', 'homes', 'photo'] as const;
+  // Per-folder profile so build_deck.js renders PII chips + captions with no
+  // hand-editing. pii_class: low = app identifiers, medium/high = personal data.
+  const FOLDER_PROFILE: Record<string, { pii_class: string; purpose: string }> = {
+    docker:  { pii_class: 'low',    purpose: 'Container app data — names are identifiers, not personal' },
+    home:    { pii_class: 'medium', purpose: 'Legacy single-user home directory' },
+    homes:   { pii_class: 'high',   purpose: 'Per-account home directories' },
+    photo:   { pii_class: 'high',   purpose: 'Photo library — thumbnails blurred at capture' },
+  };
   const enumeration: Record<string, { count: number; items: string[] }> = {};
 
   for (const [idx, name] of folders.entries()) {
@@ -131,8 +139,8 @@ test('synology DSM — capture root directory enumeration', async ({ page }) => 
   }
 
   // --- 4b. Drill into /homes/<NAS_USER> -----------------------------------
-  // The mission: "ค้นหาไฟล์ของ user: wadjakorn" — explicit per-user enumeration.
-  const userFolder = NAS_USER || 'wadjakorn';
+  // Explicit per-user enumeration of the signed-in account's home folder.
+  const userFolder = NAS_USER || 'admin';
   await clickTreeItem(page, 'homes');
   await page.waitForTimeout(500);
   await page.getByRole('option', { name: userFolder, exact: true }).dblclick();
@@ -144,17 +152,29 @@ test('synology DSM — capture root directory enumeration', async ({ page }) => 
   const userItems = await listVisibleItems(page);
   const userFooter = await page.locator('text=/\\d+\\s+(items|รายการ)/').first().textContent().catch(() => '');
   const userCount = parseInt(userFooter?.match(/\d+/)?.[0] ?? `${userItems.length}`, 10);
-  await snap(page, '07_wadjakorn_home');
+  await snap(page, '07_user_home');
 
   // --- 5. Write metadata.json --------------------------------------------
   const meta = {
     captured_at: new Date().toISOString(),
     captured_by: 'playwright@capture.spec.ts',
-    target: TARGET_URL,
+    // Object form (not bare string) so build_deck.js can label the deck.
+    target: { url: TARGET_URL, product: process.env.APP_NAME ?? 'Synology DSM' },
+    pii_policy: { applied: true, raw: false, rule: 'CSS blur on high/medium-PII regions before each screenshot' },
+    capture_steps: [
+      { step: 1, name: 'signin',   file: 'shots/01_signin_form.png', caption: 'Authenticate with NAS_USER / NAS_PASS' },
+      { step: 2, name: 'desktop',  file: 'shots/02_desktop.png',     caption: 'Land on the app launcher' },
+      { step: 3, name: 'navigate', file: 'shots/03_docker.png',      caption: 'Open File Station, walk the left tree' },
+      { step: 4, name: 'blur',     file: 'shots/07_user_home.png',   caption: 'Inject PII stylesheet before each shot' },
+      { step: 5, name: 'snapshot', file: 'shots/07_user_home.png',   caption: 'Full-page screenshot to ./shots/NN_*.png' },
+      { step: 6, name: 'metadata', file: 'shots/07_user_home.png',   caption: 'Record counts + items to metadata.json' },
+    ],
     root_shared_folders: folders.map((name, i) => ({
       name,
       item_count: enumeration[name].count,
       items: enumeration[name].items,
+      pii_class: FOLDER_PROFILE[name]?.pii_class ?? 'low',
+      purpose: FOLDER_PROFILE[name]?.purpose ?? '',
       screenshot: `shots/0${i + 3}_${name}.png`,
     })),
     user_home_drilldown: {
@@ -162,7 +182,7 @@ test('synology DSM — capture root directory enumeration', async ({ page }) => 
       path: `/homes/${userFolder}`,
       item_count: userCount,
       items: userItems,
-      screenshot: 'shots/07_wadjakorn_home.png',
+      screenshot: 'shots/07_user_home.png',
     },
   };
   fs.writeFileSync(path.join(SHOTS_DIR, 'metadata.json'), JSON.stringify(meta, null, 2));

@@ -16,12 +16,15 @@ Synology DSM is the bundled reference flow — the same pattern works for Proxmo
 ## Quick start (headless replay)
 
 ```bash
-npm install                  # @playwright/test + Chromium
+npm install                  # @playwright/test + Chromium + pptxgenjs
 cp .env.example .env         # fill in target URL + credentials
 npm run capture              # cross-env → works on bash / zsh / cmd / PowerShell
+npm run deck                 # shots/metadata.json → capture_deck.pptx
 ```
 
-Artifacts land in `./shots/` (PNGs + `metadata.json`). The bundled spec targets Synology DSM; adapt the URL + selectors for your own app — see [SETUP.md](SETUP.md).
+`capture` writes PNGs + `metadata.json` into `./shots/`; `deck` turns them into a slide deck. The two halves share one metadata schema, so the pipeline runs end-to-end with no hand-editing — `build_deck.js` is app-agnostic (it reads `target.product` for labels and tolerates missing fields). The bundled spec targets Synology DSM; adapt the URL + selectors for your own app — see [SETUP.md](SETUP.md).
+
+Optional: `APP_NAME="Grafana" npm run capture` stamps the product name onto the deck; `npm run annotate` overlays numbered pins (see [pins.example.json](pins.example.json)).
 
 ## Design properties
 
