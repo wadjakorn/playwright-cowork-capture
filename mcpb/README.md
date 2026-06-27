@@ -33,7 +33,7 @@ powershell -ExecutionPolicy Bypass -File ..\scripts\build-mcpb.ps1
 
 ```bash
 # macOS / Linux
-cd mcpb && npm install --omit=dev && zip -r ../dist/playwright-mcp.mcpb . -x '*.log' '*.bak*'
+mkdir -p dist && cd mcpb && npm install --omit=dev && zip -r ../dist/playwright-mcp.mcpb . -x '*.log' '*.bak*' '.gitignore'
 ```
 
 Either way the result is `dist/playwright-mcp.mcpb`. `manifest.json` must sit at

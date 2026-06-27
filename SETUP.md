@@ -67,7 +67,7 @@ powershell -ExecutionPolicy Bypass -File scripts\build-mcpb.ps1
 
 ```bash
 # macOS / Linux
-cd mcpb && npm install --omit=dev && zip -r ../dist/playwright-mcp.mcpb . -x '*.log' '*.bak*'
+mkdir -p dist && cd mcpb && npm install --omit=dev && zip -r ../dist/playwright-mcp.mcpb . -x '*.log' '*.bak*' '.gitignore'
 ```
 
 **ทำไมต้องใช้ตัวนี้แทน `npx @playwright/mcp@latest`:** Claude Desktop / Cowork โหลด bundle ด้วย
@@ -224,6 +224,10 @@ Claude จะใช้ Playwright MCP tools (`browser_navigate`, `browser_snapsh
 > ถ้าใช้ hardened bundle (Step 1 ทาง A) ไม่ต้องแก้ manifest — set env `PLAYWRIGHT_MCP_ARGS`
 > เป็น flags ที่ต้องการได้เลย (เช่น `--browser=chromium --user-data-dir=... --ignore-https-errors`),
 > หรือแก้ `flags` ใน `mcpb/server.js` แล้ว rebuild
+>
+> ⚠️ `PLAYWRIGHT_MCP_ARGS` split ด้วย space แบบง่าย — **ห้ามมี space ใน value ของ flag เดียว**
+> (เช่น path ที่มีช่องว่าง `--user-data-dir=C:\Users\My Name\...` จะพัง). ถ้า path มี space
+> ให้แก้ array `flags` ใน `mcpb/server.js` ตรงๆ แล้ว rebuild แทนการ set env
 
 **Cross-platform variable substitution** (MCPB spec รองรับ): `${HOME}`, `${DESKTOP}`, `${DOCUMENTS}`, `${DOWNLOADS}` ทำงานทั้ง macOS/Windows/Linux. ถ้าจะใช้ Windows-only เปลี่ยนเป็น `${LOCALAPPDATA}` ใน manifest
 

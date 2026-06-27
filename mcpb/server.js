@@ -27,7 +27,8 @@ const fs = require('node:fs');
 const isWin = process.platform === 'win32';
 const cli = path.join(__dirname, 'node_modules', '@playwright', 'mcp', 'cli.js');
 
-// Capture-friendly defaults; override via PLAYWRIGHT_MCP_ARGS (space-separated).
+// Capture-friendly defaults; override via PLAYWRIGHT_MCP_ARGS (space-separated;
+// no spaces inside a single flag value — for paths with spaces edit `flags` here).
 const defaultFlags = [
   '--browser=chromium',
   '--isolated',
