@@ -1,0 +1,22 @@
+{
+  "manifest_version": "0.3",
+  "name": "playwright-mcp",
+  "display_name": "Playwright MCP",
+  "version": "0.1.1",
+  "description": "Browser automation via Microsoft @playwright/mcp (local Chromium, full LAN access)",
+  "author": { "name": "wadjakorn" },
+  "license": "Apache-2.0",
+  "server": {
+    "type": "node",
+    "entry_point": "server.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server.js"]
+    }
+  },
+  "tools_generated": true,
+  "compatibility": {
+    "runtimes": { "node": ">=18.0.0" },
+    "platforms": ["win32", "darwin", "linux"]
+  }
+}

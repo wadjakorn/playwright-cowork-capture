@@ -1,0 +1,8 @@
+# Vendored at build time by scripts/build-mcpb.ps1 — do not commit.
+node_modules/
+package-lock.json
+
+# Runtime/debug artifacts that must never ship inside the .mcpb
+*.log
+*.bak
+*.bak-*
